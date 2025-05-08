@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Conjugación Verbal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans">
+  <div class="max-w-4xl mx-auto p-8 mt-10 bg-white rounded-lg shadow-lg">
+
+    <!-- Bienvenida -->
+    <div id="welcome" class="text-center">
+      <h1 class="text-5xl font-bold mb-8">Juego de Conjugación Verbal</h1>
+      <p class="mb-6 text-xl">Reglas: Cada acierto suma 2 puntos, cada fallo resta 1. Objetivo: llegar a 20 puntos en 20 preguntas. 30s por pregunta.</p>
+      <label for="playerName" class="block mb-4 text-2xl">¿Cómo te llamas?</label>
+      <input id="playerName" type="text" class="border border-gray-300 rounded px-4 py-3 mb-6 w-full text-xl" placeholder="Tu nombre">
+      <button onclick="startGame()" class="bg-blue-600 text-white text-2xl px-10 py-4 rounded hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+        Iniciar juego
+      </button>
+    </div>
+
+    <!-- Juego -->
+    <div id="game" class="hidden">
+      <div class="flex justify-between items-center mb-6">
+        <p id="greeting" class="text-2xl font-semibold"></p>
+        <p id="progress" class="text-lg text-gray-600">Pregunta 0/20</p>
+      </div>
+      <p id="score" class="mb-4 text-2xl font-semibold">Puntuación: 0</p>
+      <p id="timer" class="mb-6 text-red-600 font-mono text-xl">Tiempo restante: 30s</p>
+      <p id="question" class="mb-6 text-3xl font-medium"></p>
+
+      <!-- Opciones múltiples -->
+      <div id="multiple-choice" class="grid grid-cols-2 gap-6 mb-6 hidden"></div>
+
+      <!-- Input libre -->
+      <div id="text-input" class="mb-6 hidden">
+        <input type="text" id="userAnswer" class="border border-gray-300 px-4 py-3 rounded w-full mb-4 text-xl" placeholder="Tu respuesta" autocomplete="off">
+        <button onclick="submitTextAnswer()" class="bg-green-600 text-white text-2xl px-10 py-4 rounded hover:bg-green-700 focus:ring-4 focus:ring-green-300">
+          Enviar
+        </button>
+      </div>
+
+      <p id="chosen" class="text-lg text-gray-700 mt-2"></p>
+      <p id="feedback" class="mt-4 text-2xl font-bold min-h-[2.5rem]"></p>
+      <button id="continueBtn" onclick="nextStep()" class="mt-6 bg-indigo-600 text-white text-2xl px-10 py-4 rounded hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 hidden">
+        Continuar
+      </button>
+    </div>
+
+    <!-- Resumen -->
+    <div id="summary" class="hidden mt-8 text-center">
+      <h2 class="text-4xl font-bold mb-6">Resumen del juego</h2>
+      <p class="mb-2 text-xl">Jugador: <span id="playerSummaryName" class="font-semibold"></span></p>
+      <p class="mb-4 text-2xl">Puntuación final: <span id="finalScore" class="font-semibold"></span></p>
+      <ul id="errorList" class="list-disc list-inside text-xl text-gray-800 mb-8"></ul>
+      <div class="flex flex-col items-center gap-4">
+        <button onclick="startGame()" class="bg-purple-600 text-white text-2xl px-10 py-4 rounded hover:bg-purple-700 focus:ring-4 focus:ring-purple-300">
+          Empezar nueva partida (mismo jugador)
+        </button>
+        <button onclick="reiniciarJuego()" class="bg-indigo-600 text-white text-2xl px-10 py-4 rounded hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300">
+          Nuevo jugador
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Datos básicos
+    const tiempos = [
+  "Presente de Indicativo",
+  "Pretérito imperfecto de Indicativo",
+  "Pretérito perfecto simple de Indicativo",
+  "Futuro de Indicativo",
+  "Condicional de Indicativo",
+  "Presente de Subjuntivo",
+  "Pretérito imperfecto de Subjuntivo",
+  "Futuro de Subjuntivo"
+];
+    const personas = ["yo", "tú", "él/ella", "nosotros", "vosotros", "ellos/ellas"];
+const verbos = [
+  // Verbos -ar (103)
+  "amar", "cantar", "bailar", "trabajar", "nadar", "viajar", "estudiar", "hablar", "caminar", "escuchar",
+  "mirar", "llevar", "comprar", "pasar", "esperar", "ganar", "enseñar", "preguntar", "pagar", "saltar",
+  "brincar", "calar", "brindar", "tropezar", "desear", "bostezar", "alentar", "avisar", "envidiar", "murmurar",
+  "rezar", "molestar", "prestar", "hallar", "heredar", "extrañar", "marchar", "tallar", "calmar", "negociar",
+  "ayudar", "buscar", "cambiar", "cocinar", "comenzar", "continuar", "cortar", "cuidar", "dejar", "descansar",
+  "dibujar", "durar", "empezar", "encontrar", "entrar", "explicar", "formar", "gastar", "gritar", "imaginar",
+  "intentar", "jugar", "lavar", "limpiar", "llamar", "llegar", "mandar", "manejar", "mostrar", "olvidar", // Fin de los primeros 70 -ar
+  "achacar", "acuciar", "adular", "afianzar", "agolpar", "ahondar", "alardear", "albergar", "aletargar", "amainar",
+  "amedrentar", "anquilosar", "apaciguar", "apechugar", "aplacar", "arredrar", "arrogar", "asediar", "atosigar", "augurar",
+  "barrenar", "bisbisar", "capitular", "cercenar", "cincelar", "claudicar", "coadyuvar", "coartar", "compaginar", "conculcar",
+  "confabular", "conjeturar", "constatar",
+
+  // Verbos -er (98)
+  "comer", "beber", "correr", "aprender", "temer", "volver", "resolver", "responder", "entender", "creer",
+  "meter", "depender", "mover", "ofrecer", "prometer", "deber", "emerger", "vender", "esconder", "sorprender",
+  "romper", "suceder", "temblar", "prender", "defender", "recoger", "leer", "tejer", "parecer", "proteger",
+  "aparecer", "encender", "comprender", "nacer", "obedecer", "extender", "yacer", "retroceder", "someter", "barrer",
+  "ceder", "cocer", "cometer", "conceder", "convencer", "corresponder", "crecer", "demoler", "desaparecer", "deshacer",
+  "devolver", "ejercer", "escoger", "establecer", "exceder", "fallecer", "florecer", "mecer", "merecer", "morder",
+  "oler", "perder", "pertenecer", "poseer", "pretender", // Fin de los primeros 65 -er
+  "acaecer", "acometer", "adolescer", "adormecer", "aprehender", "compeler", "competer", "condoler", "converger", "corroer",
+  "decaer", "desatender", "desmerecer", "desposeer", "desprender", "desproveer", "desvanecer", "deterger", "detraer", "devanecer",
+  "displacer", "embeber", "embellecer", "embrutecer", "empobrecer", "enaltecer", "enardecer", "encarecer", "enfurecer", "engrandecer",
+  "enloquecer", "escarnecer", "heder",
+
+  // Verbos -ir (99)
+  "vivir", "partir", "escribir", "abrir", "recibir", "asistir", "decidir", "cubrir", "compartir", "existir",
+  "subir", "admitir", "sufrir", "omitir", "imprimir", "consumir", "permitir", "invertir", "incluir", "describir",
+  "reunir", "redirigir", "interrumpir", "digerir", "transmitir", "consentir", "discutir", "exhibir", "repartir", "impartir",
+  "persistir", "insistir", "emergir", "fundir", "expandir", "refundir", "deprimir", "distinguir", "conferir", "sustituir",
+  "aburrir", "añadir", "aplaudir", "batir", "combatir", "conducir", "confundir", "conseguir", "construir", "convertir",
+  "corregir", "cumplir", "definir", "dirigir", "dividir", "elegir", "esculpir", "exigir", "fingir", "hervir",
+  "huir", "impedir", "influir", "introducir", "medir", // Fin de los primeros 65 -ir
+  "abolir", "aducir", "aguerrir", "argüir", "arrecir", "aterir", "blandir", "ceñir", "cernir", "colegir",
+  "compungir", "concernir", "constreñir", "controvertir", "deglutir", "delinquir", "denegrir", "departir", "desabrir", "desasir",
+  "desceñir", "descomedir", "desfruncir", "desguarnir", "desleír", "deslucir", "desmedir", "desoír", "desuncir", "elidir",
+  "embestir", "engreír", "engullir", "entumir" // Se ha añadido "concernir" aquí para un total de 34 nuevos -ir.
+];
+
+    // Estado del juego
+    let errores = [];
+    let score = 0;
+    let questionsAsked = 0;
+    const totalQuestions = 20;
+    let verbCount = 0;
+    let tenseCount = 0;
+    let timerInterval;
+    const MAX_TIME = 30;
+    let currentAnswer = '';
+    let currentData = {};
+
+    // Normalización de acentos y mayúsculas
+    function normalize(str) {
+      return str
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase();
+    }
+
+    // Desinencias regulares
+    const desinencias = {
+      ar: {
+        "Presente de Indicativo": ["o","as","a","amos","áis","an"],
+        "Pretérito imperfecto de Indicativo": ["aba","abas","aba","ábamos","abais","aban"],
+        "Pretérito perfecto simple de Indicativo": ["é","aste","ó","amos","asteis","aron"],
+        "Futuro de Indicativo": ["aré","arás","ará","aremos","aréis","arán"],
+        "Condicional de Indicativo": ["aría","arías","aría","aríamos","aríais","arían"],
+        "Presente de Subjuntivo": ["e","es","e","emos","éis","en"],
+        "Pretérito imperfecto de Subjuntivo": ["ara","aras","ara","áramos","arais","aran"],
+        
+        "Futuro de Subjuntivo": ["are","ares","are","áremos","areis","aren"]
+      },
+      er: {
+        "Presente de Indicativo": ["o","es","e","emos","éis","en"],
+        "Pretérito imperfecto de Indicativo": ["ía","ías","ía","íamos","íais","ían"],
+        "Pretérito perfecto simple de Indicativo": ["í","iste","ió","imos","isteis","ieron"],
+        "Futuro de Indicativo": ["eré","erás","erá","eremos","eréis","erán"],
+        "Condicional de Indicativo": ["ería","erías","ería","eríamos","eríais","erían"],
+        "Presente de Subjuntivo": ["a","as","a","amos","áis","an"],
+        "Pretérito imperfecto de Subjuntivo": ["iera","ieras","iera","iéramos","ierais","ieran"],
+        "Pretérito imperfecto de Subjuntivo 2": ["iese","ieses","iese","iésemos","ieseis","iesen"],
+        "Futuro de Subjuntivo": ["iere","ieres","iere","iéremos","iereis","ieren"]
+      },
+      ir: {
+        "Presente de Indicativo": ["o","es","e","imos","ís","en"],
+        "Pretérito imperfecto de Indicativo": ["ía","ías","ía","íamos","íais","ían"],
+        "Pretérito perfecto simple de Indicativo": ["í","iste","ió","imos","isteis","ieron"],
+        "Futuro de Indicativo": ["iré","irás","irá","iremos","iréis","irán"],
+        "Condicional de Indicativo": ["iría","irías","iría","iríamos","iríais","irían"],
+        "Presente de Subjuntivo": ["a","as","a","amos","áis","an"],
+        "Pretérito imperfecto de Subjuntivo": ["iera","ieras","iera","iéramos","ierais","ieran"],
+        "Pretérito imperfecto de Subjuntivo 2": ["iese","ieses","iese","iésemos","ieseis","iesen"],
+        "Futuro de Subjuntivo": ["iere","ieres","iere","iéremos","iereis","ieren"]
+      }
+    };
+
+    // Conjugar verbo
+    function conjugar(verbo, tiempo, persona) {
+      const raiz = verbo.slice(0, -2);
+      const term = verbo.slice(-2);
+      const idx = personas.indexOf(persona);
+      const arr = desinencias[term]?.[tiempo] || [];
+      return arr[idx] ? raiz + arr[idx] : '';
+    }
+
+    // Actualizar UI
+    function updateScore() {
+      document.getElementById('score').innerText = `Puntuación: ${score}`;
+    }
+    function updateProgress() {
+      document.getElementById('progress').innerText = `Pregunta ${questionsAsked}/${totalQuestions}`;
+    }
+
+    // Iniciar juego
+    function startGame() {
+      const name = document.getElementById('playerName').value.trim();
+      if (!name) return alert('Por favor, indica tu nombre.');
+      document.getElementById('welcome').classList.add('hidden');
+      document.getElementById('game').classList.remove('hidden');
+      document.getElementById('greeting').innerText = `¡Vamos, ${name}!`;
+      score = 0;
+      errores = [];
+      questionsAsked = 0;
+      verbCount = 0;
+      tenseCount = 0;
+      updateScore();
+      updateProgress();
+      generateQuestion();
+    }
+
+    // Generar pregunta equilibrada con alternativas
+    function generateQuestion() {
+      clearInterval(timerInterval);
+      document.getElementById('feedback').innerText = '';
+      document.getElementById('continueBtn').classList.add('hidden');
+      document.getElementById('multiple-choice').innerHTML = '';
+      document.getElementById('text-input').classList.add('hidden');
+
+      // Selección de modo equilibrada
+      let tipo;
+      if (verbCount < totalQuestions / 2 && tenseCount < totalQuestions / 2) {
+        tipo = Math.random() < 0.5 ? 'verb' : 'tense';
+      } else if (verbCount < totalQuestions / 2) {
+        tipo = 'verb';
+      } else {
+        tipo = 'tense';
+      }
+
+      // Generar verbo, tiempo y persona válidos
+      let verbo, tiempo, persona, forma;
+      do {
+        verbo = verbos[Math.floor(Math.random() * verbos.length)];
+        tiempo = tiempos[Math.floor(Math.random() * tiempos.length)];
+        persona = personas[Math.floor(Math.random() * personas.length)];
+        forma = conjugar(verbo, tiempo, persona);
+      } while (!forma);
+
+      // Preparar alternativas para subjuntivo imperfecto
+      const alternativas = [forma];
+      if (tiempo === 'Pretérito imperfecto de Subjuntivo') {
+  const raiz = verbo.slice(0, -2);
+  const idx = personas.indexOf(persona);
+  const suf2 = {
+    ar: ["ase","ases","ase","ásemos","aseis","asen"],
+    er: ["iese","ieses","iese","iésemos","ieseis","iesen"],
+    ir: ["iese","ieses","iese","iésemos","ieseis","iesen"]
+  }[verbo.slice(-2)];
+  if (suf2) alternativas.push(raiz + suf2[idx]);
+}
+
+      currentAnswer = tipo === 'verb' ? tiempo : forma;
+      currentData = { tipo, verbo, tiempo, persona, alternativas };
+      questionsAsked++;
+      if (tipo === 'verb') verbCount++; else tenseCount++;
+      updateProgress();
+
+      // Mostrar la pregunta
+      document.getElementById('question').innerText = tipo === 'verb'
+        ? `¿A qué tiempo pertenece “${forma}” de “${verbo}” en “${persona}”?`
+        : `Escribe la forma de “${verbo}” en “${persona}” y tiempo: ${tiempo}`;
+
+      // Mostrar controles
+      if (tipo === 'verb') {
+        const mc = document.getElementById('multiple-choice');
+        mc.classList.remove('hidden');
+        tiempos.forEach(op => {
+          const btn = document.createElement('button');
+          btn.className = 'bg-blue-100 hover:bg-blue-300 px-4 py-3 rounded text-lg';
+          btn.innerText = op;
+          btn.onclick = e => {
+  const buttons = document.querySelectorAll('#multiple-choice button');
+  buttons.forEach(b => b.disabled = true);
+  if (normalize(op) === normalize(currentAnswer)) {
+    e.target.classList.remove('bg-blue-100');
+    e.target.classList.add('bg-green-400');
+  } else {
+    e.target.classList.remove('bg-blue-100');
+    e.target.classList.add('bg-red-400');
+  }
+  submitAnswer(op);
+};
+          mc.appendChild(btn);
+        });
+      } else {
+        document.getElementById('text-input').classList.remove('hidden');
+        document.getElementById('userAnswer').focus();
+      }
+
+      // Iniciar temporizador
+      let t = MAX_TIME;
+      const timerEl = document.getElementById('timer');
+      timerEl.innerText = `Tiempo restante: ${t}s`;
+      timerInterval = setInterval(() => {
+        t--;
+        timerEl.innerText = `Tiempo restante: ${t}s`;
+        if (t <= 0) { clearInterval(timerInterval); submitAnswer('__timeout__'); }
+      }, 1000);
+    }
+
+    // Evaluar respuesta
+    function submitAnswer(ans) {
+      clearInterval(timerInterval);
+      const alts = currentData.alternativas || [currentAnswer];
+      const normAlts = alts.map(a => normalize(a));
+      const ansNorm = normalize(ans);
+      let fb;
+
+      const isCorrect = currentData.tipo === 'verb'
+        ? normalize(ans) === normalize(currentData.tiempo)
+        : normAlts.includes(ansNorm);
+
+      if (ans === '__timeout__') {
+        errores.push({ ...currentData, respuesta: 'Tiempo agotado' });
+        fb = `<span class="text-red-600">Tiempo agotado. Correcta: ${currentAnswer}</span>`;
+        score--;
+      } else if (isCorrect) {
+        fb = `<span class="text-green-600">¡Correcto!</span>`;
+        score += 2;
+      } else {
+        errores.push({ ...currentData, respuesta: ans });
+        fb = `<span class="text-red-600">Incorrecto. Correcta: ${currentAnswer}</span>`;
+        score--;
+      }
+      document.getElementById('chosen').innerText = `Respuesta elegida: ${ans}`;
+      document.getElementById('feedback').innerHTML = fb;
+      updateScore();
+      document.getElementById('continueBtn').classList.remove('hidden');
+    }
+
+    function submitTextAnswer() {
+      const ans = normalize(document.getElementById('userAnswer').value.trim());
+      document.getElementById('userAnswer').value = '';
+      submitAnswer(ans);
+    }
+
+    // Continuar o mostrar resumen
+    function nextStep() {
+      if (questionsAsked >= totalQuestions || score >= 20) {
+        showSummary();
+      } else {
+        generateQuestion();
+      }
+    }
+
+    // Mostrar resumen final
+    function showSummary() {
+      const name = document.getElementById('playerName').value.trim();
+      document.getElementById('playerSummaryName').innerText = name;
+      clearInterval(timerInterval);
+      document.getElementById('game').classList.add('hidden');
+      document.getElementById('summary').classList.remove('hidden');
+      document.getElementById('finalScore').innerText = score;
+      const ul = document.getElementById('errorList');
+      ul.innerHTML = '';
+      if (errores.length === 0) {
+        ul.innerHTML = `<li class='text-green-700 text-xl font-semibold'>¡Enhorabuena! No has cometido ningún error.</li>`;
+        return;
+      }
+      const erroresPorTipo = {};
+      const erroresPorPersona = {};
+      const erroresPorTipoPregunta = { verb: 0, tense: 0 };
+      errores.forEach(e => {
+        const tipo = e.tiempo;
+        const persona = e.persona;
+        const pregunta = e.tipo;
+        if (!erroresPorTipo[tipo]) erroresPorTipo[tipo] = 0;
+        if (!erroresPorPersona[persona]) erroresPorPersona[persona] = 0;
+        erroresPorTipo[tipo]++;
+        erroresPorPersona[persona]++;
+        erroresPorTipoPregunta[pregunta]++;
+      });
+ 
+      const resumen = Object.entries(erroresPorTipo)
+        .map(([tiempo, cantidad]) => `<li class='text-gray-600'>${tiempo}: <strong>${cantidad}</strong> errores</li>`) 
+        .join('');
+      const resumenPersonas = Object.entries(erroresPorPersona)
+        .map(([persona, cantidad]) => `<li class='text-gray-600'>${persona}: <strong>${cantidad}</strong> errores</li>`) 
+        .join('');
+      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por tiempo verbal:</li>${resumen}`;
+      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por persona gramatical:</li>${resumenPersonas}`;
+      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por tipo de pregunta:</li>
+        <li class='text-gray-600'>¿A qué tiempo pertenece…?: <strong>${erroresPorTipoPregunta.verb}</strong> errores</li>
+        <li class='text-gray-600'>¿Cómo se conjuga…?: <strong>${erroresPorTipoPregunta.tense}</strong> errores</li>`;
+
+      errores.forEach(e => {
+        const correcto = e.alternativas ? e.alternativas.join('/') : e.forma;
+        ul.innerHTML += `<li>Forma: <strong class='text-green-700'>${correcto}</strong> para ${e.verbo} en ${e.persona} → tiempo ${e.tiempo}${e.respuesta && e.respuesta !== 'Tiempo agotado' && !e.alternativas.map(a => normalize(a)).includes(normalize(e.respuesta)) ? ` (respondido: <u class='text-red-700'>${e.respuesta}</u>)` : ''}</li>`;
+      });
+    }
+
+    // Reiniciar juego
+    function reiniciarJuego() {
+  document.getElementById('summary').classList.add('hidden');
+  document.getElementById('playerName').value = '';
+  document.getElementById('welcome').classList.remove('hidden');
+  document.getElementById('playerName').focus();
+}
+  </script>
+</body>
+</html>
