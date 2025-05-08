@@ -273,7 +273,7 @@ const verbos = [
           btn.onclick = e => {
   const buttons = document.querySelectorAll('#multiple-choice button');
   buttons.forEach(b => b.disabled = true);
-  if (normalize(op) === normalize(currentAnswer)) {
+  if (op === currentAnswer) {
     e.target.classList.remove('bg-blue-100');
     e.target.classList.add('bg-green-400');
   } else {
@@ -321,9 +321,12 @@ const verbos = [
         score += 2;
       } else {
         errores.push({ ...currentData, respuesta: ans });
-        fb = `<span class="text-red-600">Incorrecto. Correcta: ${currentAnswer}</span>`;
-        score--;
+        const acento = alts.includes(ans);
+        const advertencia = acento ? ' <span class="text-yellow-600">(¿Revisaste las tildes?)</span>' : '';
+        fb = `<span class="text-red-600">Incorrecto. Correcta: ${currentAnswer}</span>${advertencia}`;
+        score += acento ? 1 : -1;
       }
+
       document.getElementById('chosen').innerText = `Respuesta elegida: ${ans}`;
       document.getElementById('feedback').innerHTML = fb;
       updateScore();
@@ -331,7 +334,7 @@ const verbos = [
     }
 
     function submitTextAnswer() {
-      const ans = normalize(document.getElementById('userAnswer').value.trim());
+      const ans = document.getElementById('userAnswer').value.trim();
       document.getElementById('userAnswer').value = '';
       submitAnswer(ans);
     }
@@ -355,49 +358,58 @@ const verbos = [
       document.getElementById('finalScore').innerText = score;
       const ul = document.getElementById('errorList');
       ul.innerHTML = '';
+
       if (errores.length === 0) {
         ul.innerHTML = `<li class='text-green-700 text-xl font-semibold'>¡Enhorabuena! No has cometido ningún error.</li>`;
         return;
       }
+
       const erroresPorTipo = {};
-      const erroresPorPersona = {};
-      const erroresPorTipoPregunta = { verb: 0, tense: 0 };
       errores.forEach(e => {
         const tipo = e.tiempo;
-        const persona = e.persona;
-        const pregunta = e.tipo;
         if (!erroresPorTipo[tipo]) erroresPorTipo[tipo] = 0;
-        if (!erroresPorPersona[persona]) erroresPorPersona[persona] = 0;
         erroresPorTipo[tipo]++;
-        erroresPorPersona[persona]++;
-        erroresPorTipoPregunta[pregunta]++;
       });
- 
-      const resumen = Object.entries(erroresPorTipo)
-        .map(([tiempo, cantidad]) => `<li class='text-gray-600'>${tiempo}: <strong>${cantidad}</strong> errores</li>`) 
-        .join('');
-      const resumenPersonas = Object.entries(erroresPorPersona)
-        .map(([persona, cantidad]) => `<li class='text-gray-600'>${persona}: <strong>${cantidad}</strong> errores</li>`) 
-        .join('');
-      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por tiempo verbal:</li>${resumen}`;
-      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por persona gramatical:</li>${resumenPersonas}`;
-      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores por tipo de pregunta:</li>
-        <li class='text-gray-600'>¿A qué tiempo pertenece…?: <strong>${erroresPorTipoPregunta.verb}</strong> errores</li>
-        <li class='text-gray-600'>¿Cómo se conjuga…?: <strong>${erroresPorTipoPregunta.tense}</strong> errores</li>`;
 
+      const resumenTipos = Object.entries(erroresPorTipo)
+        .map(([tiempo, cantidad]) => `<li class='text-gray-600'>${tiempo}: <strong>${cantidad}</strong> errores</li>`)
+        .join('');
+
+      if (resumenTipos) {
+        ul.innerHTML += `<div class='mt-6 bg-white border border-gray-200 shadow p-4 rounded text-left'><h3 class='text-xl font-bold mb-2'>Errores por tiempo verbal</h3><ul class='list-disc list-inside'>${resumenTipos}</ul></div>`;
+      }
+
+      const agrupados = {};
       errores.forEach(e => {
-        const correcto = e.alternativas ? e.alternativas.join('/') : e.forma;
-        ul.innerHTML += `<li>Forma: <strong class='text-green-700'>${correcto}</strong> para ${e.verbo} en ${e.persona} → tiempo ${e.tiempo}${e.respuesta && e.respuesta !== 'Tiempo agotado' && !e.alternativas.map(a => normalize(a)).includes(normalize(e.respuesta)) ? ` (respondido: <u class='text-red-700'>${e.respuesta}</u>)` : ''}</li>`;
+        if (!agrupados[e.tiempo]) agrupados[e.tiempo] = [];
+        agrupados[e.tiempo].push(e);
+      });
+
+      ul.innerHTML += `<li class='mt-4 mb-2 font-semibold text-lg'>Errores individuales agrupados por tiempo:</li>`;
+      Object.entries(agrupados).forEach(([tiempo, lista]) => {
+        ul.innerHTML += `<div class='mt-4'><h4 class='text-lg font-semibold mb-2'>${tiempo}</h4><div class='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>`;
+        lista.forEach(e => {
+          const correcto = e.alternativas ? e.alternativas.join('/') : e.forma;
+          const errorHTML = `<div class='bg-white border border-gray-200 shadow p-4 rounded text-left'>
+            <p><strong class='text-green-700'>Forma correcta:</strong> ${correcto}</p>
+            <p><strong>Verbo:</strong> ${e.verbo}</p>
+            <p><strong>Persona:</strong> ${e.persona}</p>
+            <p><strong>Tiempo:</strong> ${e.tiempo}</p>
+            ${e.respuesta && e.respuesta !== 'Tiempo agotado' && !e.alternativas.map(a => normalize(a)).includes(normalize(e.respuesta)) ? `<p><strong class='text-red-700'>Respondido:</strong> <u>${e.respuesta}</u>${e.alternativas.includes(e.respuesta) ? ' <span class="text-yellow-600">(error por tilde)</span>' : ''}</p>` : ''}
+          </div>`;
+          ul.innerHTML += errorHTML;
+        });
+        ul.innerHTML += `</div></div>`;
       });
     }
 
     // Reiniciar juego
     function reiniciarJuego() {
-  document.getElementById('summary').classList.add('hidden');
-  document.getElementById('playerName').value = '';
-  document.getElementById('welcome').classList.remove('hidden');
-  document.getElementById('playerName').focus();
-}
+      document.getElementById('summary').classList.add('hidden');
+      document.getElementById('playerName').value = '';
+      document.getElementById('welcome').classList.remove('hidden');
+      document.getElementById('playerName').focus();
+    }
   </script>
 </body>
 </html>
